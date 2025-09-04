@@ -56,7 +56,7 @@ class AINewsletterWebviewProvider implements vscode.WebviewViewProvider {
                         vscode.commands.executeCommand('ai-newsletter.stop');
                         break;
                     case 'input':
-                        vscode.commands.executeCommand('ai-newsletter.input');
+                        vscode.commands.executeCommand('ai-newsletter.input', message.data);
                         break;
                 }
             }
@@ -192,6 +192,62 @@ class AINewsletterWebviewProvider implements vscode.WebviewViewProvider {
                     margin-top: 12px;
                     padding-top: 12px;
                     border-top: 1px solid var(--vscode-sideBar-border);
+                }
+                
+                .input-container {
+                    display: flex;
+                    gap: 8px;
+                    margin-bottom: 8px;
+                }
+                
+                .input-field {
+                    flex: 1;
+                    padding: 10px;
+                    border: 1px solid var(--vscode-input-border);
+                    border-radius: 4px;
+                    background: var(--vscode-input-background);
+                    color: var(--vscode-input-foreground);
+                    font-family: inherit;
+                    font-size: 14px;
+                    outline: none;
+                }
+                
+                .input-field:focus {
+                    border-color: var(--vscode-focusBorder);
+                    box-shadow: 0 0 0 1px var(--vscode-focusBorder);
+                }
+                
+                .input-field::placeholder {
+                    color: var(--vscode-input-placeholderForeground);
+                }
+                
+                .send-button {
+                    padding: 10px 16px;
+                    border: 1px solid var(--vscode-button-border);
+                    border-radius: 4px;
+                    background: var(--vscode-button-background);
+                    color: var(--vscode-button-foreground);
+                    cursor: pointer;
+                    font-size: 14px;
+                    font-family: inherit;
+                    transition: background-color 0.2s;
+                    white-space: nowrap;
+                }
+                
+                .send-button:hover:not(:disabled) {
+                    background: var(--vscode-button-hoverBackground);
+                }
+                
+                .send-button:disabled {
+                    opacity: 0.5;
+                    cursor: not-allowed;
+                }
+                
+                .input-prompt {
+                    font-size: 12px;
+                    color: var(--vscode-descriptionForeground);
+                    margin-bottom: 8px;
+                    padding: 4px 0;
                 }
                 
                 .button {
@@ -433,18 +489,47 @@ class AINewsletterWebviewProvider implements vscode.WebviewViewProvider {
             
             ${this.status.waitingForInput ? `
             <div class="input-actions">
-                <button class="button warning" onclick="sendMessage('input')">
-                    ⌨️ PROVIDE INPUT REQUIRED
-                </button>
+                <div class="input-prompt">💬 Please provide your input:</div>
+                <div class="input-container">
+                    <input type="text" class="input-field" id="userInput" placeholder="Type your response here..." />
+                    <button class="send-button" onclick="sendInput()">Send</button>
+                </div>
             </div>
             ` : ''}
             
             <script>
                 const vscode = acquireVsCodeApi();
                 
-                function sendMessage(command) {
-                    vscode.postMessage({ command: command });
+                function sendMessage(command, data = null) {
+                    vscode.postMessage({ command: command, data: data });
                 }
+                
+                function sendInput() {
+                    const inputField = document.getElementById('userInput');
+                    const input = inputField.value.trim();
+                    
+                    if (input) {
+                        sendMessage('input', input);
+                        inputField.value = ''; // Clear the input field
+                        inputField.disabled = true; // Disable until next input needed
+                        
+                        // Update button state
+                        const sendButton = inputField.nextElementSibling;
+                        sendButton.disabled = true;
+                        sendButton.textContent = 'Sent ✓';
+                    }
+                }
+                
+                // Handle Enter key in input field
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        const inputField = document.getElementById('userInput');
+                        if (inputField && document.activeElement === inputField) {
+                            e.preventDefault();
+                            sendInput();
+                        }
+                    }
+                });
                 
                 // Auto-scroll to bottom when content updates
                 function scrollToBottom() {
@@ -455,7 +540,15 @@ class AINewsletterWebviewProvider implements vscode.WebviewViewProvider {
                 }
                 
                 // Scroll to bottom on page load
-                window.addEventListener('load', scrollToBottom);
+                window.addEventListener('load', () => {
+                    scrollToBottom();
+                    
+                    // Focus the input field if it exists
+                    const inputField = document.getElementById('userInput');
+                    if (inputField) {
+                        inputField.focus();
+                    }
+                });
                 
                 // Watch for content changes and scroll
                 const observer = new MutationObserver(scrollToBottom);
@@ -496,7 +589,7 @@ class AINewsletterController {
 
         vscode.commands.registerCommand('ai-newsletter.start', () => this.start());
         vscode.commands.registerCommand('ai-newsletter.stop', () => this.stop());
-        vscode.commands.registerCommand('ai-newsletter.input', () => this.input());
+        vscode.commands.registerCommand('ai-newsletter.input', (inputData) => this.input(inputData));
     } private start() {
         if (this.currentProcess) {
             return;
@@ -559,24 +652,32 @@ class AINewsletterController {
         }
     }
 
-    private async input() {
+    private async input(inputData?: string) {
         if (!this.currentProcess) {
             return;
         }
 
-        const input = await vscode.window.showInputBox({
-            prompt: 'Enter your input:',
-            placeHolder: 'Type your response here...',
-            ignoreFocusOut: true
-        });
+        let input: string | undefined;
 
-        if (input !== undefined) {
+        if (inputData) {
+            // Input came directly from webview
+            input = inputData;
+        } else {
+            // Fallback to dialog (in case called from elsewhere)
+            input = await vscode.window.showInputBox({
+                prompt: 'Enter your input:',
+                placeHolder: 'Type your response here...',
+                ignoreFocusOut: true
+            });
+        }
+
+        if (input !== undefined && input.trim()) {
             this.currentProcess.stdin?.write(input + '\n');
             this.webviewProvider.addOutput(`💬 You: ${input}`);
             this.webviewProvider.setWaitingForInput(false);
 
             // If it's a topic, store it
-            if (input.trim() && !this.webviewProvider['lastTopic']) {
+            if (input.trim()) {
                 this.webviewProvider.setTopic(input);
             }
         }
