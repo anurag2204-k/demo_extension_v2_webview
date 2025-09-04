@@ -142,6 +142,10 @@ class AINewsletterWebviewProvider {
                     margin: 0;
                     padding: 16px;
                     line-height: 1.5;
+                    height: 100vh;
+                    display: flex;
+                    flex-direction: column;
+                    overflow: hidden;
                 }
                 
                 .header {
@@ -151,6 +155,7 @@ class AINewsletterWebviewProvider {
                     color: var(--vscode-sideBarTitle-foreground);
                     border-bottom: 1px solid var(--vscode-sideBar-border);
                     padding-bottom: 8px;
+                    flex-shrink: 0;
                 }
                 
                 .status-section {
@@ -159,6 +164,7 @@ class AINewsletterWebviewProvider {
                     background: var(--vscode-sideBar-background);
                     border: 1px solid var(--vscode-sideBar-border);
                     border-radius: 6px;
+                    flex-shrink: 0;
                 }
                 
                 .status-text {
@@ -185,6 +191,18 @@ class AINewsletterWebviewProvider {
                     height: 100%;
                     background: var(--vscode-progressBar-foreground);
                     transition: width 0.3s ease;
+                }
+                
+                .actions {
+                    flex-shrink: 0;
+                    margin-bottom: 16px;
+                }
+                
+                .input-actions {
+                    flex-shrink: 0;
+                    margin-top: 12px;
+                    padding-top: 12px;
+                    border-top: 1px solid var(--vscode-sideBar-border);
                 }
                 
                 .button {
@@ -227,17 +245,21 @@ class AINewsletterWebviewProvider {
                 }
                 
                 .output-section {
-                    margin-top: 16px;
+                    flex: 1;
+                    display: flex;
+                    flex-direction: column;
+                    min-height: 0;
                 }
                 
                 .output-header {
                     font-weight: 600;
                     margin-bottom: 8px;
                     color: var(--vscode-sideBarSectionHeader-foreground);
+                    flex-shrink: 0;
                 }
                 
                 .output-content {
-                    max-height: 400px;
+                    flex: 1;
                     overflow-y: auto;
                     border: 1px solid var(--vscode-sideBar-border);
                     border-radius: 4px;
@@ -249,17 +271,91 @@ class AINewsletterWebviewProvider {
                 
                 .output-line {
                     margin: 4px 0;
-                    padding: 4px 8px;
-                    border-radius: 3px;
+                    padding: 6px 8px;
+                    border-radius: 4px;
                     word-wrap: break-word;
                     white-space: pre-wrap;
                     line-height: 1.4;
+                    transition: all 0.3s ease;
                 }
                 
                 .output-line.recent {
                     background: var(--vscode-editor-selectionBackground);
-                    opacity: 0.8;
+                    border-left: 3px solid var(--vscode-textLink-foreground);
+                    animation: highlightFade 3s ease-out;
                 }
+                
+                .output-line.newest {
+                    background: var(--vscode-textCodeBlock-background);
+                    border-left: 3px solid var(--vscode-charts-green);
+                    animation: newContentGlow 2s ease-out;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                }
+                
+                @keyframes highlightFade {
+                    0% { 
+                        background: var(--vscode-charts-yellow);
+                        transform: scale(1.02);
+                    }
+                    100% { 
+                        background: var(--vscode-editor-selectionBackground);
+                        transform: scale(1);
+                    }
+                }
+                
+                @keyframes newContentGlow {
+                    0% { 
+                        background: var(--vscode-charts-green);
+                        opacity: 0.9;
+                        transform: translateX(5px);
+                    }
+                    100% { 
+                        background: var(--vscode-textCodeBlock-background);
+                        opacity: 1;
+                        transform: translateX(0);
+                    }
+                }
+                
+                .output-line.user-input {
+                    background: var(--vscode-textCodeBlock-background);
+                    border-left: 3px solid var(--vscode-textLink-foreground);
+                    font-weight: 500;
+                }
+                
+                .output-line.error {
+                    background: var(--vscode-inputValidation-errorBackground);
+                    color: var(--vscode-inputValidation-errorForeground);
+                    border-left: 3px solid var(--vscode-charts-red);
+                }
+                
+                .spinning {
+                    display: inline-block;
+                    animation: spin 1s linear infinite;
+                }
+                
+                @keyframes spin {
+                    0% { transform: rotate(0deg); }
+                    100% { transform: rotate(360deg); }
+                }
+                
+                /* Scrollbar styling */
+                .output-content::-webkit-scrollbar {
+                    width: 8px;
+                }
+                
+                .output-content::-webkit-scrollbar-track {
+                    background: var(--vscode-scrollbarSlider-background);
+                }
+                
+                .output-content::-webkit-scrollbar-thumb {
+                    background: var(--vscode-scrollbarSlider-hoverBackground);
+                    border-radius: 4px;
+                }
+                
+                .output-content::-webkit-scrollbar-thumb:hover {
+                    background: var(--vscode-scrollbarSlider-activeBackground);
+                }
+            </style>
                 
                 .output-line.user-input {
                     background: var(--vscode-textCodeBlock-background);
@@ -306,12 +402,6 @@ class AINewsletterWebviewProvider {
             </div>
             
             <div class="actions">
-                ${this.status.waitingForInput ? `
-                <button class="button warning" onclick="sendMessage('input')">
-                    ⌨️ PROVIDE INPUT REQUIRED
-                </button>
-                ` : ''}
-                
                 ${this.status.isRunning ? `
                 <button class="button danger" onclick="sendMessage('stop')">
                     ⏹️ Stop Generation
@@ -326,14 +416,18 @@ class AINewsletterWebviewProvider {
             ${this.outputLines.length > 0 ? `
             <div class="output-section">
                 <div class="output-header">📋 Output (${this.outputLines.length} lines)</div>
-                <div class="output-content">
+                <div class="output-content" id="outputContent">
                     ${this.outputLines.map((line, index) => {
-            const isRecent = index >= this.outputLines.length - 3;
+            const isNewest = index === this.outputLines.length - 1; // Most recent line
+            const isRecent = index >= this.outputLines.length - 3; // Last 3 lines
             const isUserInput = line.includes('You:');
             const isError = line.includes('Error') || line.includes('error');
             let className = 'output-line';
-            if (isRecent) {
-                className += ' recent';
+            if (isNewest && !isUserInput) {
+                className += ' newest'; // Special highlighting for newest content
+            }
+            else if (isRecent) {
+                className += ' recent'; // Standard highlighting for recent content
             }
             if (isUserInput) {
                 className += ' user-input';
@@ -347,12 +441,40 @@ class AINewsletterWebviewProvider {
             </div>
             ` : ''}
             
+            ${this.status.waitingForInput ? `
+            <div class="input-actions">
+                <button class="button warning" onclick="sendMessage('input')">
+                    ⌨️ PROVIDE INPUT REQUIRED
+                </button>
+            </div>
+            ` : ''}
+            
             <script>
                 const vscode = acquireVsCodeApi();
                 
                 function sendMessage(command) {
                     vscode.postMessage({ command: command });
                 }
+                
+                // Auto-scroll to bottom when content updates
+                function scrollToBottom() {
+                    const outputContent = document.getElementById('outputContent');
+                    if (outputContent) {
+                        outputContent.scrollTop = outputContent.scrollHeight;
+                    }
+                }
+                
+                // Scroll to bottom on page load
+                window.addEventListener('load', scrollToBottom);
+                
+                // Watch for content changes and scroll
+                const observer = new MutationObserver(scrollToBottom);
+                window.addEventListener('load', () => {
+                    const outputContent = document.getElementById('outputContent');
+                    if (outputContent) {
+                        observer.observe(outputContent, { childList: true, subtree: true });
+                    }
+                });
             </script>
         </body>
         </html>`;
