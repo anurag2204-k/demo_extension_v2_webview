@@ -407,26 +407,26 @@ class AINewsletterWebviewProvider implements vscode.WebviewViewProvider {
                 <div class="output-header">📋 Output (${this.outputLines.length} lines)</div>
                 <div class="output-content" id="outputContent">
                     ${this.outputLines.map((line, index) => {
-                        const isNewest = index === this.outputLines.length - 1; // Most recent line
-                        const isRecent = index >= this.outputLines.length - 3; // Last 3 lines
-                        const isUserInput = line.includes('You:');
-                        const isError = line.includes('Error') || line.includes('error');
-                        
-                        let className = 'output-line';
-                        if (isNewest && !isUserInput) {
-                            className += ' newest'; // Special highlighting for newest content
-                        } else if (isRecent) {
-                            className += ' recent'; // Standard highlighting for recent content
-                        }
-                        if (isUserInput) {
-                            className += ' user-input';
-                        }
-                        if (isError) {
-                            className += ' error';
-                        }
+            const isNewest = index === this.outputLines.length - 1; // Most recent line
+            const isRecent = index >= this.outputLines.length - 3; // Last 3 lines
+            const isUserInput = line.includes('You:');
+            const isError = line.includes('Error') || line.includes('error');
 
-                        return `<div class="${className}">${this.escapeHtml(line)}</div>`;
-                    }).join('')}
+            let className = 'output-line';
+            if (isNewest && !isUserInput) {
+                className += ' newest'; // Special highlighting for newest content
+            } else if (isRecent) {
+                className += ' recent'; // Standard highlighting for recent content
+            }
+            if (isUserInput) {
+                className += ' user-input';
+            }
+            if (isError) {
+                className += ' error';
+            }
+
+            return `<div class="${className}">${this.escapeHtml(line)}</div>`;
+        }).join('')}
                 </div>
             </div>
             ` : ''}
