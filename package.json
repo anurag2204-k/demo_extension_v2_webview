@@ -13,26 +13,59 @@
     "commands": [
       {
         "command": "ai-newsletter.start",
-        "title": "Start Newsletter",
-        "icon": "$(play)"
+        "title": "Start Newsletter Generation",
+        "icon": "$(play)",
+        "category": "AI Newsletter"
       },
       {
         "command": "ai-newsletter.stop", 
-        "title": "Stop Newsletter",
-        "icon": "$(stop)"
+        "title": "Stop Newsletter Generation",
+        "icon": "$(debug-stop)",
+        "category": "AI Newsletter"
       },
       {
         "command": "ai-newsletter.input",
         "title": "Provide Input",
-        "icon": "$(edit)"
+        "icon": "$(edit)",
+        "category": "AI Newsletter"
+      },
+      {
+        "command": "ai-newsletter.refresh",
+        "title": "Refresh",
+        "icon": "$(refresh)"
       }
     ],
+    "keybindings": [
+      {
+        "command": "ai-newsletter.start",
+        "key": "ctrl+alt+n",
+        "mac": "cmd+alt+n",
+        "when": "true"
+      },
+      {
+        "command": "ai-newsletter.input",
+        "key": "ctrl+alt+i",
+        "mac": "cmd+alt+i",
+        "when": "true"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "ai-newsletter.refresh",
+          "when": "view == aiNewsletterSidebar",
+          "group": "navigation"
+        }
+      ]
+    },
     "views": {
       "ai-newsletter-sidebar": [
         {
+          "type": "webview",
           "id": "aiNewsletterSidebar",
-          "name": "Newsletter Generator",
-          "when": "true"
+          "name": "AI Newsletter Generator",
+          "when": "true",
+          "icon": "$(notebook)"
         }
       ]
     },
@@ -40,14 +73,15 @@
       "activitybar": [
         {
           "id": "ai-newsletter-sidebar",
-          "title": "AI Newsletter",
+          "title": "AI Newsletter Generator",
           "icon": "$(notebook)"
         }
       ]
     }
   },
   "scripts": {
-    "compile": "tsc -p ./"
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./"
   },
   "devDependencies": {
     "@types/vscode": "^1.74.0",
