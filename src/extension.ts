@@ -12,9 +12,9 @@ interface NewsletterStatus {
 
 class AINewsletterWebviewProvider implements vscode.WebviewViewProvider {
     public static readonly viewType = 'aiNewsletterSidebar';
-    
+
     private _view?: vscode.WebviewView;
-    
+
     private status: NewsletterStatus = {
         isRunning: false,
         waitingForInput: false,
@@ -78,7 +78,7 @@ class AINewsletterWebviewProvider implements vscode.WebviewViewProvider {
 
     public addOutput(line: string): void {
         this.outputLines.push(line);
-        
+
         // Update status based on output
         if (line.includes('Generating section headings')) {
             this.status.currentStep = 'Generating Headings';
@@ -93,7 +93,7 @@ class AINewsletterWebviewProvider implements vscode.WebviewViewProvider {
             this.status.currentStep = 'Finalizing';
             this.status.progress = 4;
         }
-        
+
         this.updateWebview();
     }
 
@@ -115,7 +115,7 @@ class AINewsletterWebviewProvider implements vscode.WebviewViewProvider {
 
     private _getHtmlForWebview(webview: vscode.Webview): string {
         const progressPercentage = this.status.progress > 0 ? Math.round((this.status.progress / this.status.totalSteps) * 100) : 0;
-        
+
         return `<!DOCTYPE html>
         <html lang="en">
         <head>
@@ -317,22 +317,22 @@ class AINewsletterWebviewProvider implements vscode.WebviewViewProvider {
                 <div class="output-header">📋 Output (${this.outputLines.length} lines)</div>
                 <div class="output-content">
                     ${this.outputLines.map((line, index) => {
-                        const isRecent = index >= this.outputLines.length - 3;
-                        const isUserInput = line.includes('You:');
-                        const isError = line.includes('Error') || line.includes('error');
-                        let className = 'output-line';
-                        if (isRecent) {
-                            className += ' recent';
-                        }
-                        if (isUserInput) {
-                            className += ' user-input';
-                        }
-                        if (isError) {
-                            className += ' error';
-                        }
-                        
-                        return `<div class="${className}">${this.escapeHtml(line)}</div>`;
-                    }).join('')}
+            const isRecent = index >= this.outputLines.length - 3;
+            const isUserInput = line.includes('You:');
+            const isError = line.includes('Error') || line.includes('error');
+            let className = 'output-line';
+            if (isRecent) {
+                className += ' recent';
+            }
+            if (isUserInput) {
+                className += ' user-input';
+            }
+            if (isError) {
+                className += ' error';
+            }
+
+            return `<div class="${className}">${this.escapeHtml(line)}</div>`;
+        }).join('')}
                 </div>
             </div>
             ` : ''}
@@ -364,24 +364,24 @@ class AINewsletterController {
 
     constructor(private context: vscode.ExtensionContext) {
         this.webviewProvider = new AINewsletterWebviewProvider(this.context.extensionUri);
-        
+
         context.subscriptions.push(
             vscode.window.registerWebviewViewProvider(
-                AINewsletterWebviewProvider.viewType, 
+                AINewsletterWebviewProvider.viewType,
                 this.webviewProvider
             )
         );
-        
+
         vscode.commands.registerCommand('ai-newsletter.start', () => this.start());
         vscode.commands.registerCommand('ai-newsletter.stop', () => this.stop());
         vscode.commands.registerCommand('ai-newsletter.input', () => this.input());
-    }    private start() {
+    } private start() {
         if (this.currentProcess) {
             return;
         }
 
         const pythonScriptPath = path.join(this.context.extensionPath, 'python-src', 'main.py');
-        
+
         this.webviewProvider.setRunning(true);
         this.webviewProvider.addOutput('🚀 Starting newsletter generator...');
 
