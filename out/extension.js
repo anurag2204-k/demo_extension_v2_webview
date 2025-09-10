@@ -117,7 +117,9 @@ class AINewsletterWebviewProvider {
         this.updateWebview();
     }
     setTopic(topic) {
-        this.lastTopic = topic;
+        if (this.lastTopic === '') {
+            this.lastTopic = topic;
+        }
         this.updateWebview();
     }
     updateWebview() {
@@ -411,7 +413,7 @@ class AINewsletterWebviewProvider {
                 .output-content::-webkit-scrollbar-thumb:hover {
                     background: var(--vscode-scrollbarSlider-activeBackground);
                 }
-            </style>
+            
                 
                 .output-line.user-input {
                     background: var(--vscode-textCodeBlock-background);

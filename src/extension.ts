@@ -103,7 +103,9 @@ class AINewsletterWebviewProvider implements vscode.WebviewViewProvider {
     }
 
     public setTopic(topic: string): void {
-        this.lastTopic = topic;
+        if (this.lastTopic === '') {
+            this.lastTopic = topic;
+        }
         this.updateWebview();
     }
 
@@ -400,7 +402,7 @@ class AINewsletterWebviewProvider implements vscode.WebviewViewProvider {
                 .output-content::-webkit-scrollbar-thumb:hover {
                     background: var(--vscode-scrollbarSlider-activeBackground);
                 }
-            </style>
+            
                 
                 .output-line.user-input {
                     background: var(--vscode-textCodeBlock-background);
