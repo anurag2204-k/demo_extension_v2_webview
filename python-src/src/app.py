@@ -43,7 +43,7 @@ def run():
             print(content)
             print("-----------------------")
 
-            action = input("\nWhat would you like to do? \nPlease choose 'accept', 'regenerate', or 'edit'. ").lower()
+            action = input("\nWhat would you like to do? \nPlease choose 'accept', 'regenerate', '1', '2', or 'edit'. ").lower()
 
             if action == 'accept':
                 newsletter_content[heading] = content
@@ -58,7 +58,7 @@ def run():
                 edited_content = []
                 while True:
                     line = input()
-                    if line == 'END':
+                    if line.lower() == 'end':
                         break
                     edited_content.append(line)
                 newsletter_content[heading] = "\n".join(edited_content)

@@ -103,6 +103,14 @@ class AINewsletterWebviewProvider implements vscode.WebviewViewProvider {
             this.status.progress = 4;
         }
 
+        // Reset waiting states if we see "Invalid action"
+        if (line.includes('Invalid action')) {
+            this.status.waitingForInput = false;
+            this.status.waitingForChoice = false;
+            this.status.choices = [];
+            this.status.lastPrompt = '';
+        }
+
         // Check if this line contains a "Please choose" prompt
         if (line.includes('Please choose')) {
             this.status.lastPrompt = line;
@@ -111,10 +119,16 @@ class AINewsletterWebviewProvider implements vscode.WebviewViewProvider {
                 this.status.waitingForChoice = true;
                 this.status.waitingForInput = false;
                 this.status.choices = choices;
+            } else {
+                // Fallback to regular input if no choices detected
+                this.status.waitingForInput = true;
+                this.status.waitingForChoice = false;
             }
         } else if (line.includes('?') || line.includes(':') || line.includes('Enter')) {
-            // Regular input prompt
-            this.status.waitingForInput = !this.status.waitingForChoice;
+            // Regular input prompt (only if not already waiting for choice)
+            if (!this.status.waitingForChoice) {
+                this.status.waitingForInput = true;
+            }
         }
 
         this.updateWebview();
@@ -797,6 +811,8 @@ class AINewsletterController {
         if (input !== undefined && input.trim()) {
             this.currentProcess.stdin?.write(input + '\n');
             this.webviewProvider.addOutput(`💬 You: ${input}`);
+
+            // Clear waiting states after input is sent
             this.webviewProvider.clearWaitingState();
 
             if (input.trim()) {
