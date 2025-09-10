@@ -45,9 +45,12 @@ class AINewsletterWebviewProvider {
     status = {
         isRunning: false,
         waitingForInput: false,
+        waitingForChoice: false,
         currentStep: 'Ready',
         progress: 0,
-        totalSteps: 4
+        totalSteps: 4,
+        choices: [],
+        lastPrompt: ''
     };
     outputLines = [];
     lastTopic = '';
@@ -73,6 +76,9 @@ class AINewsletterWebviewProvider {
                     vscode.commands.executeCommand('ai-newsletter.stop');
                     break;
                 case 'input':
+                    vscode.commands.executeCommand('ai-newsletter.input', message.data);
+                    break;
+                case 'choice':
                     vscode.commands.executeCommand('ai-newsletter.input', message.data);
                     break;
             }
@@ -110,10 +116,58 @@ class AINewsletterWebviewProvider {
             this.status.currentStep = 'Finalizing';
             this.status.progress = 4;
         }
+        // Check if this line contains a "Please choose" prompt
+        if (line.includes('Please choose')) {
+            this.status.lastPrompt = line;
+            const choices = this.extractChoicesFromPrompt(line);
+            if (choices && choices.length > 0) {
+                this.status.waitingForChoice = true;
+                this.status.waitingForInput = false;
+                this.status.choices = choices;
+            }
+        }
+        else if (line.includes('?') || line.includes(':') || line.includes('Enter')) {
+            // Regular input prompt
+            this.status.waitingForInput = !this.status.waitingForChoice;
+        }
         this.updateWebview();
     }
+    extractChoicesFromPrompt(prompt) {
+        // Pattern to match choices like 'add', 'edit', 'delete', or 'continue'
+        const quotedChoicesPattern = /'([^']+)'/g;
+        let choices = [];
+        let match;
+        while ((match = quotedChoicesPattern.exec(prompt)) !== null) {
+            choices.push(match[1]);
+        }
+        // If no quoted choices found, try other patterns
+        if (choices.length === 0) {
+            // Pattern for numbered choices like "1, 2, 3, 4 or 5"
+            const numbersMatch = prompt.match(/\d+(?:,\s*\d+)*(?:\s*or\s*\d+)?/);
+            if (numbersMatch) {
+                const numbers = numbersMatch[0].match(/\d+/g);
+                if (numbers) {
+                    choices = numbers;
+                }
+            }
+            // Pattern for yes/no
+            else if (prompt.toLowerCase().includes('yes') && prompt.toLowerCase().includes('no')) {
+                choices = ['yes', 'no'];
+            }
+        }
+        return choices;
+    }
     setWaitingForInput(waiting) {
-        this.status.waitingForInput = waiting;
+        if (!this.status.waitingForChoice) {
+            this.status.waitingForInput = waiting;
+        }
+        this.updateWebview();
+    }
+    clearWaitingState() {
+        this.status.waitingForInput = false;
+        this.status.waitingForChoice = false;
+        this.status.choices = [];
+        this.status.lastPrompt = '';
         this.updateWebview();
     }
     setTopic(topic) {
@@ -207,6 +261,70 @@ class AINewsletterWebviewProvider {
                     border-top: 1px solid var(--vscode-sideBar-border);
                 }
                 
+                .choice-actions {
+                    flex-shrink: 0;
+                    margin-top: 12px;
+                    padding: 12px;
+                    background: var(--vscode-textCodeBlock-background);
+                    border: 1px solid var(--vscode-textLink-foreground);
+                    border-radius: 6px;
+                }
+                
+                .choice-prompt {
+                    font-size: 14px;
+                    color: var(--vscode-foreground);
+                    margin-bottom: 12px;
+                    font-weight: 500;
+                }
+                
+                .choice-buttons {
+                    display: flex;
+                    flex-wrap: wrap;
+                    gap: 6px;
+                }
+                
+                .choice-button {
+                    flex: 1;
+                    min-width: 0;
+                    padding: 8px 12px;
+                    border: 1px solid var(--vscode-button-border);
+                    border-radius: 4px;
+                    background: var(--vscode-button-background);
+                    color: var(--vscode-button-foreground);
+                    cursor: pointer;
+                    font-size: 12px;
+                    font-family: inherit;
+                    transition: all 0.2s;
+                    text-align: center;
+                    white-space: nowrap;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                }
+                
+                /* For 2 choices, make them equal width */
+                .choice-buttons:has(.choice-button:nth-child(2):last-child) .choice-button {
+                    flex-basis: calc(50% - 3px);
+                }
+                
+                /* For 3 choices, make them equal width */
+                .choice-buttons:has(.choice-button:nth-child(3):last-child) .choice-button {
+                    flex-basis: calc(33.33% - 4px);
+                }
+                
+                /* For 4+ choices, wrap to new lines if needed */
+                .choice-buttons:has(.choice-button:nth-child(4)) .choice-button {
+                    flex-basis: calc(50% - 3px);
+                }
+                
+                .choice-button:hover {
+                    background: var(--vscode-button-hoverBackground);
+                    transform: scale(1.02);
+                }
+                
+                .choice-button:active {
+                    transform: scale(0.98);
+                }
+                
                 .input-container {
                     display: flex;
                     gap: 8px;
@@ -289,17 +407,6 @@ class AINewsletterWebviewProvider {
                 .button.danger {
                     background: var(--vscode-inputValidation-errorBackground);
                     color: var(--vscode-inputValidation-errorForeground);
-                }
-                
-                .button.warning {
-                    background: var(--vscode-inputValidation-warningBackground);
-                    color: var(--vscode-inputValidation-warningForeground);
-                    animation: pulse 2s infinite;
-                }
-                
-                @keyframes pulse {
-                    0%, 100% { opacity: 1; }
-                    50% { opacity: 0.7; }
                 }
                 
                 .output-section {
@@ -413,28 +520,6 @@ class AINewsletterWebviewProvider {
                 .output-content::-webkit-scrollbar-thumb:hover {
                     background: var(--vscode-scrollbarSlider-activeBackground);
                 }
-            
-                
-                .output-line.user-input {
-                    background: var(--vscode-textCodeBlock-background);
-                    border-left: 3px solid var(--vscode-textLink-foreground);
-                    font-weight: 500;
-                }
-                
-                .output-line.error {
-                    background: var(--vscode-inputValidation-errorBackground);
-                    color: var(--vscode-inputValidation-errorForeground);
-                }
-                
-                .spinning {
-                    display: inline-block;
-                    animation: spin 1s linear infinite;
-                }
-                
-                @keyframes spin {
-                    0% { transform: rotate(0deg); }
-                    100% { transform: rotate(360deg); }
-                }
             </style>
         </head>
         <body>
@@ -448,8 +533,6 @@ class AINewsletterWebviewProvider {
                 </div>
                 
                 ${this.lastTopic ? `<div class="topic">📖 Topic: "${this.lastTopic}"</div>` : ''}
-                
-                
             </div>
             
             <div class="actions">
@@ -492,7 +575,18 @@ class AINewsletterWebviewProvider {
             </div>
             ` : ''}
             
-            ${this.status.waitingForInput ? `
+            ${this.status.waitingForChoice ? `
+            <div class="choice-actions">
+                <div class="choice-prompt">🤔 ${this.status.lastPrompt}</div>
+                <div class="choice-buttons">
+                    ${this.status.choices.map(choice => `
+                        <button class="choice-button" onclick="sendChoice('${choice}')">
+                            ${this.getChoiceEmoji(choice)} ${choice.charAt(0).toUpperCase() + choice.slice(1)}
+                        </button>
+                    `).join('')}
+                </div>
+            </div>
+            ` : this.status.waitingForInput ? `
             <div class="input-actions">
                 <div class="input-prompt">💬 Please provide your input:</div>
                 <div class="input-container">
@@ -509,16 +603,29 @@ class AINewsletterWebviewProvider {
                     vscode.postMessage({ command: command, data: data });
                 }
                 
+                function sendChoice(choice) {
+                    vscode.postMessage({ command: 'choice', data: choice });
+                    
+                    // Disable all choice buttons to prevent multiple clicks
+                    const choiceButtons = document.querySelectorAll('.choice-button');
+                    choiceButtons.forEach(btn => {
+                        btn.disabled = true;
+                        if (btn.textContent.includes(choice)) {
+                            btn.style.background = 'var(--vscode-charts-green)';
+                            btn.textContent = '✓ ' + btn.textContent;
+                        }
+                    });
+                }
+                
                 function sendInput() {
                     const inputField = document.getElementById('userInput');
                     const input = inputField.value.trim();
                     
                     if (input) {
                         sendMessage('input', input);
-                        inputField.value = ''; // Clear the input field
-                        inputField.disabled = true; // Disable until next input needed
+                        inputField.value = '';
+                        inputField.disabled = true;
                         
-                        // Update button state
                         const sendButton = inputField.nextElementSibling;
                         sendButton.disabled = true;
                         sendButton.textContent = 'Sent ✓';
@@ -548,7 +655,6 @@ class AINewsletterWebviewProvider {
                 window.addEventListener('load', () => {
                     scrollToBottom();
                     
-                    // Focus the input field if it exists
                     const inputField = document.getElementById('userInput');
                     if (inputField) {
                         inputField.focus();
@@ -566,6 +672,24 @@ class AINewsletterWebviewProvider {
             </script>
         </body>
         </html>`;
+    }
+    getChoiceEmoji(choice) {
+        const emojiMap = {
+            'add': '➕',
+            'edit': '✏️',
+            'delete': '🗑️',
+            'continue': '▶️',
+            'accept': '✅',
+            'regenerate': '🔄',
+            'yes': '👍',
+            'no': '👎',
+            '1': '1️⃣',
+            '2': '2️⃣',
+            '3': '3️⃣',
+            '4': '4️⃣',
+            '5': '5️⃣'
+        };
+        return emojiMap[choice.toLowerCase()] || '🔘';
     }
     escapeHtml(text) {
         return text
@@ -603,10 +727,6 @@ class AINewsletterController {
             text.split('\n').forEach((line) => {
                 if (line.trim()) {
                     this.webviewProvider.addOutput(line);
-                    // Check if asking for input
-                    if (line.includes('?') || line.includes(':') || line.includes('Enter')) {
-                        this.webviewProvider.setWaitingForInput(true);
-                    }
                     // Extract topic from the input
                     if (line.includes('topic of your newsletter')) {
                         this.webviewProvider.setWaitingForInput(true);
@@ -620,13 +740,13 @@ class AINewsletterController {
         this.currentProcess.on('close', (code) => {
             this.currentProcess = null;
             this.webviewProvider.setRunning(false);
-            this.webviewProvider.setWaitingForInput(false);
+            this.webviewProvider.clearWaitingState();
             this.webviewProvider.addOutput(`✅ Process finished with code ${code}`);
         });
         this.currentProcess.on('error', (error) => {
             this.currentProcess = null;
             this.webviewProvider.setRunning(false);
-            this.webviewProvider.setWaitingForInput(false);
+            this.webviewProvider.clearWaitingState();
             this.webviewProvider.addOutput(`❌ Error: ${error.message}`);
         });
     }
@@ -635,7 +755,7 @@ class AINewsletterController {
             this.currentProcess.kill();
             this.currentProcess = null;
             this.webviewProvider.setRunning(false);
-            this.webviewProvider.setWaitingForInput(false);
+            this.webviewProvider.clearWaitingState();
             this.webviewProvider.addOutput('⏹️ Stopped by user');
         }
     }
@@ -645,11 +765,9 @@ class AINewsletterController {
         }
         let input;
         if (inputData) {
-            // Input came directly from webview
             input = inputData;
         }
         else {
-            // Fallback to dialog (in case called from elsewhere)
             input = await vscode.window.showInputBox({
                 prompt: 'Enter your input:',
                 placeHolder: 'Type your response here...',
@@ -659,8 +777,7 @@ class AINewsletterController {
         if (input !== undefined && input.trim()) {
             this.currentProcess.stdin?.write(input + '\n');
             this.webviewProvider.addOutput(`💬 You: ${input}`);
-            this.webviewProvider.setWaitingForInput(false);
-            // If it's a topic, store it
+            this.webviewProvider.clearWaitingState();
             if (input.trim()) {
                 this.webviewProvider.setTopic(input);
             }
