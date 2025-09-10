@@ -11,6 +11,7 @@ interface NewsletterStatus {
     totalSteps: number;
     choices: string[];
     lastPrompt: string;
+    showHeader: boolean; // Add this new property
 }
 
 class AINewsletterWebviewProvider implements vscode.WebviewViewProvider {
@@ -26,7 +27,8 @@ class AINewsletterWebviewProvider implements vscode.WebviewViewProvider {
         progress: 0,
         totalSteps: 4,
         choices: [],
-        lastPrompt: ''
+        lastPrompt: '',
+        showHeader: true // Initialize as visible
     };
     private outputLines: string[] = [];
     private lastTopic: string = '';
@@ -67,9 +69,17 @@ class AINewsletterWebviewProvider implements vscode.WebviewViewProvider {
                     case 'choice':
                         vscode.commands.executeCommand('ai-newsletter.input', message.data);
                         break;
+                    case 'toggleHeader':
+                        this.toggleHeader();
+                        break;
                 }
             }
         );
+    }
+
+    public toggleHeader(): void {
+        this.status.showHeader = !this.status.showHeader;
+        this.updateWebview();
     }
 
     public setRunning(running: boolean): void {
@@ -224,6 +234,52 @@ class AINewsletterWebviewProvider implements vscode.WebviewViewProvider {
                     border-bottom: 1px solid var(--vscode-sideBar-border);
                     padding-bottom: 8px;
                     flex-shrink: 0;
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                }
+                
+                .header-title {
+                    flex: 1;
+                }
+                
+                .header-controls {
+                    display: flex;
+                    gap: 8px;
+                }
+                
+                .icon-button {
+                    width: 28px;
+                    height: 28px;
+                    padding: 4px;
+                    border: 1px solid var(--vscode-button-border);
+                    border-radius: 4px;
+                    background: var(--vscode-button-background);
+                    color: var(--vscode-button-foreground);
+                    cursor: pointer;
+                    font-size: 14px;
+                    font-family: inherit;
+                    transition: background-color 0.2s;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                }
+                
+                .icon-button:hover {
+                    background: var(--vscode-button-hoverBackground);
+                }
+                
+                .collapsible-section {
+                    transition: all 0.3s ease;
+                    overflow: hidden;
+                }
+                
+                .collapsible-section.hidden {
+                    max-height: 0;
+                    margin: 0;
+                    padding: 0;
+                    border: none;
+                    opacity: 0;
                 }
                 
                 .status-section {
@@ -536,27 +592,37 @@ class AINewsletterWebviewProvider implements vscode.WebviewViewProvider {
         </head>
         <body>
             <div class="header">
-                🤖 AI Newsletter Generator
+                <div class="header-title">🤖 AI Newsletter Generator</div>
+                <div class="header-controls">
+                    <button class="icon-button" onclick="refreshPage()" title="Refresh">
+                        🔄
+                    </button>
+                    <button class="icon-button" onclick="toggleHeader()" title="${this.status.showHeader ? 'Hide Header' : 'Show Header'}">
+                        ${this.status.showHeader ? '👁️‍🗨️' : '👁️'}
+                    </button>
+                </div>
             </div>
             
-            <div class="status-section">
-                <div class="status-text">
-                    Status: ${this.status.isRunning ? '<span class="spinning">⚡</span> Running' : '⚪ Ready'} - ${this.status.currentStep}
+            <div class="collapsible-section ${this.status.showHeader ? '' : 'hidden'}">
+                <div class="status-section">
+                    <div class="status-text">
+                        Status: ${this.status.isRunning ? '<span class="spinning">⚡</span> Running' : '⚪ Ready'} - ${this.status.currentStep}
+                    </div>
+                    
+                    ${this.lastTopic ? `<div class="topic">📖 Topic: "${this.lastTopic}"</div>` : ''}
                 </div>
                 
-                ${this.lastTopic ? `<div class="topic">📖 Topic: "${this.lastTopic}"</div>` : ''}
-            </div>
-            
-            <div class="actions">
-                ${this.status.isRunning ? `
-                <button class="button danger" onclick="sendMessage('stop')">
-                    ⏹️ Stop Generation
-                </button>
-                ` : `
-                <button class="button primary" onclick="sendMessage('start')">
-                    🚀 Start Generation
-                </button>
-                `}
+                <div class="actions">
+                    ${this.status.isRunning ? `
+                    <button class="button danger" onclick="sendMessage('stop')">
+                        ⏹️ Stop Generation
+                    </button>
+                    ` : `
+                    <button class="button primary" onclick="sendMessage('start')">
+                        🚀 Start Generation
+                    </button>
+                    `}
+                </div>
             </div>
             
             ${this.outputLines.length > 0 ? `
@@ -614,6 +680,15 @@ class AINewsletterWebviewProvider implements vscode.WebviewViewProvider {
                 
                 function sendMessage(command, data = null) {
                     vscode.postMessage({ command: command, data: data });
+                }
+                
+                function toggleHeader() {
+                    vscode.postMessage({ command: 'toggleHeader' });
+                }
+                
+                function refreshPage() {
+                    // Add refresh functionality if needed
+                    window.location.reload();
                 }
                 
                 function sendChoice(choice) {
