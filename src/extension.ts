@@ -438,14 +438,7 @@ class AINewsletterWebviewProvider implements vscode.WebviewViewProvider {
                 
                 ${this.lastTopic ? `<div class="topic">📖 Topic: "${this.lastTopic}"</div>` : ''}
                 
-                ${this.status.isRunning && this.status.progress > 0 ? `
-                <div class="progress-bar">
-                    <div class="progress-fill" style="width: ${progressPercentage}%"></div>
-                </div>
-                <div style="text-align: center; font-size: 12px; color: var(--vscode-descriptionForeground);">
-                    ${progressPercentage}% complete (Step ${this.status.progress}/${this.status.totalSteps})
-                </div>
-                ` : ''}
+                
             </div>
             
             <div class="actions">
