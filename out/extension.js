@@ -350,11 +350,13 @@ class AINewsletterWebviewProvider {
                     display: flex;
                     flex-wrap: wrap;
                     gap: 6px;
+                    align-items: stretch;
                 }
                 
                 .choice-button {
-                    flex: 1;
-                    min-width: 0;
+                    flex: 0 0 auto;
+                    min-width: 60px;
+                    max-width: 200px;
                     padding: 8px 12px;
                     border: 1px solid var(--vscode-button-border);
                     border-radius: 4px;
@@ -368,21 +370,18 @@ class AINewsletterWebviewProvider {
                     white-space: nowrap;
                     overflow: hidden;
                     text-overflow: ellipsis;
+                    box-sizing: border-box;
+                    width: fit-content;
                 }
                 
-                /* For 2 choices, make them equal width */
-                .choice-buttons:has(.choice-button:nth-child(2):last-child) .choice-button {
-                    flex-basis: calc(50% - 3px);
+                /* Let buttons grow to fill remaining space equally */
+                .choice-buttons {
+                    justify-content: stretch;
                 }
                 
-                /* For 3 choices, make them equal width */
-                .choice-buttons:has(.choice-button:nth-child(3):last-child) .choice-button {
-                    flex-basis: calc(33.33% - 4px);
-                }
-                
-                /* For 4+ choices, wrap to new lines if needed */
-                .choice-buttons:has(.choice-button:nth-child(4)) .choice-button {
-                    flex-basis: calc(50% - 3px);
+                .choice-button {
+                    flex-grow: 1;
+                    flex-shrink: 1;
                 }
                 
                 .choice-button:hover {
@@ -659,7 +658,7 @@ class AINewsletterWebviewProvider {
                 <div class="choice-prompt">🤔 ${this.status.lastPrompt}</div>
                 <div class="choice-buttons">
                     ${this.status.choices.map(choice => `
-                        <button class="choice-button" onclick="sendChoice('${choice}')">
+                        <button class="choice-button" onclick="sendChoice('${choice}')" title="${choice}">
                             ${this.getChoiceEmoji(choice)} ${choice.charAt(0).toUpperCase() + choice.slice(1)}
                         </button>
                     `).join('')}
