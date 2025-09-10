@@ -15,7 +15,7 @@ def run():
         print("\nHere are the current section headings:")
         utils.display_menu(headings)
         
-        action = input("\nWhat would you like to do? (add/edit/delete/continue): ").lower()
+        action = input("\nWhat would you like to do? \nPlease choose 'add', 'edit', 'delete', or 'continue'.").lower()
 
         if action == 'add':
             new_heading = input("Enter the new heading: ")
@@ -31,7 +31,7 @@ def run():
         elif action == 'continue':
             break
         else:
-            print("Invalid action. Please choose 'add', 'edit', 'delete', or 'continue'.")
+            print("Invalid action. \nPlease choose 'add', 'edit', 'delete', or 'continue'.")
 
     # Phase 3: Section Content Writing Loop
     newsletter_content = {}
@@ -43,7 +43,7 @@ def run():
             print(content)
             print("-----------------------")
 
-            action = input("\nWhat would you like to do? (accept/regenerate/edit): ").lower()
+            action = input("\nWhat would you like to do? \nPlease choose 'accept', 'regenerate', or 'edit'. ").lower()
 
             if action == 'accept':
                 newsletter_content[heading] = content
@@ -54,7 +54,7 @@ def run():
                 print("Please edit the content manually. When you are done, save it and press Enter here.")
                 # In a real CLI, you might open a temp file in an editor.
                 # For this simple version, we'll just take multiline input.
-                print("Enter your edited content. Type 'END' on a new line to finish.")
+                print("Enter your edited content. \nType 'END' on a new line to finish.")
                 edited_content = []
                 while True:
                     line = input()
@@ -64,7 +64,7 @@ def run():
                 newsletter_content[heading] = "\n".join(edited_content)
                 break
             else:
-                print("Invalid action. Please choose 'accept', 'regenerate', or 'edit'.")
+                print("Invalid action. \nPlease choose 'accept', 'regenerate', or 'edit'.")
 
     # Phase 4: Final Newsletter
     print("\n--- Your Final Newsletter ---")
@@ -75,7 +75,7 @@ def run():
         print("\n---\n")
 
     # Optional: Save to file
-    save_option = input("Would you like to save the newsletter to a file? (yes/no): ").lower()
+    save_option = input("Would you like to save the newsletter to a file? \nPlease choose 'yes' or 'no'.").lower()
     if save_option == 'yes':
         filename = f"{topic.replace(' ', '_').lower()}_newsletter.md"
         with open(filename, 'w') as f:
