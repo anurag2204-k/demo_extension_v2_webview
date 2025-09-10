@@ -103,15 +103,7 @@ class AINewsletterWebviewProvider implements vscode.WebviewViewProvider {
             this.status.progress = 4;
         }
 
-        // Reset waiting states if we see "Invalid action"
-        if (line.includes('Invalid action')) {
-            this.status.waitingForInput = false;
-            this.status.waitingForChoice = false;
-            this.status.choices = [];
-            this.status.lastPrompt = '';
-        }
-
-        // Check if this line contains a "Please choose" prompt
+        // ONLY check for choices if "Please choose" exists in the line
         if (line.includes('Please choose')) {
             this.status.lastPrompt = line;
             const choices = this.extractChoicesFromPrompt(line);
@@ -124,11 +116,20 @@ class AINewsletterWebviewProvider implements vscode.WebviewViewProvider {
                 this.status.waitingForInput = true;
                 this.status.waitingForChoice = false;
             }
-        } else if (line.includes('?') || line.includes(':') || line.includes('Enter')) {
-            // Regular input prompt (only if not already waiting for choice)
+        }
+        // For all other lines, check for regular input prompts
+        else if (line.includes('?') || line.includes(':') || line.includes('Enter')) {
+            // Only set waiting for input if not already waiting for choice
             if (!this.status.waitingForChoice) {
                 this.status.waitingForInput = true;
             }
+        }
+        // Reset waiting states if we see "Invalid action" but no "Please choose" on same line
+        else if (line.includes('Invalid action')) {
+            this.status.waitingForInput = false;
+            this.status.waitingForChoice = false;
+            this.status.choices = [];
+            this.status.lastPrompt = '';
         }
 
         this.updateWebview();
